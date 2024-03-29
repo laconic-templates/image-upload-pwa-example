@@ -42,7 +42,7 @@ const AppUpdater: React.FC = () => {
 };
 
 const stytchClient = new StytchUIClient(
-	"public-token-test-fb7aa946-fb42-46be-95ae-63505c0c5ff8",
+	"public-token-test-4a7ccabb-6daa-4bd0-9a13-8396e105936a",
 );
 
 const rootElement = document.getElementById("root");

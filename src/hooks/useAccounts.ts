@@ -5,24 +5,8 @@ import {
 	IRelayPKP,
 	IRelayPollStatusResponse,
 	AuthMethod,
-	AccessControlConditions,
 } from "@lit-protocol/types";
 import { useStytchUser, useStytch } from "@stytch/react";
-import { useEncryption } from "./useEncryption";
-
-const accessControlConditions: AccessControlConditions = [
-	{
-		contractAddress: "",
-		standardContractType: "",
-		chain: "ethereum",
-		method: "eth_getBalance",
-		parameters: [":userAddress", "latest"],
-		returnValueTest: {
-			comparator: ">=",
-			value: "0", // 0 ETH, so anyone can open
-		},
-	},
-];
 
 const litAuthClient: LitAuthClient = new LitAuthClient({
 	litRelayConfig: {
@@ -37,7 +21,8 @@ export const useAccounts = () => {
 	const [pkps, setPkps] = useState<IRelayPKP[] | IRelayPollStatusResponse[]>(
 		[],
 	);
-	const encryption = useEncryption();
+	const [pkp, setPKP] = useState<string>();
+	const [provider, setProvider] = useState<BaseProvider>();
 
 	useEffect(() => {
 		async function handle() {
@@ -49,7 +34,7 @@ export const useAccounts = () => {
 
 				const provider = litAuthClient.initProvider(ProviderType.StytchOtp, {
 					userId,
-					appId: "project-test-5bbaefc1-6145-4e14-8cca-8a4e154d599a",
+					appId: "project-test-52527567-9a15-4966-8cb4-d29d51e9dccc",
 				});
 
 				const authMethod = await provider.authenticate({
@@ -72,11 +57,19 @@ export const useAccounts = () => {
 				}
 
 				setPkps(pkps);
+				setPKP(
+					(pkps[0] as IRelayPKP).publicKey
+						? (pkps[0] as IRelayPKP).publicKey
+						: (pkps[0] as IRelayPollStatusResponse).pkpPublicKey,
+				);
+
+				setProvider(provider);
 			}
 		}
 		handle();
 	}, [stytch, user, authMethod, pkps]);
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function getProviderByAuthMethod(
 		authMethod: AuthMethod,
 	): BaseProvider | undefined {
@@ -100,52 +93,16 @@ export const useAccounts = () => {
 		}
 	}
 
-	const encrypt = async (dataToEncrypt: string) => {
-		if (authMethod) {
-			const provider = getProviderByAuthMethod(authMethod);
-			const pkp = (pkps[0] as IRelayPKP).publicKey
-				? (pkps[0] as IRelayPKP).publicKey
-				: (pkps[0] as IRelayPollStatusResponse).pkpPublicKey;
+	function logout() {
+		stytch.session.revoke();
+	}
 
-			if (!provider || !pkp) {
-				return;
-			}
-
-			const encrypted = await encryption.encrypt({
-				provider,
-				pkp,
-				dataToEncrypt,
-				authMethod,
-				accessControlConditions,
-			});
-
-			return encrypted;
-		}
+	return {
+		authMethod,
+		pkps,
+		provider,
+		pkp,
+		isLoggedIn: user === null ? false : true,
+		logout,
 	};
-
-	const decrypt = async (ciphertext: string, dataToDecryptHash: string) => {
-		if (authMethod) {
-			const provider = getProviderByAuthMethod(authMethod);
-			const pkp = (pkps[0] as IRelayPKP).publicKey
-				? (pkps[0] as IRelayPKP).publicKey
-				: (pkps[0] as IRelayPollStatusResponse).pkpPublicKey;
-
-			if (!provider || !pkp) {
-				return;
-			}
-
-			const decrypted = await encryption.decrypt({
-				provider,
-				pkp,
-				authMethod,
-				accessControlConditions,
-				dataToDecryptHash,
-				ciphertext,
-			});
-
-			return decrypted;
-		}
-	};
-
-	return { authMethod, pkps, encrypt, decrypt };
 };
